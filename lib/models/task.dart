@@ -1,11 +1,13 @@
 class Task {
   String title;
-  int difficulty; // 1-5 arası
   bool isCompleted;
+  int difficulty;
+  Task({required this.title, this.isCompleted = false, this.difficulty = 1});
 
-  Task({
-    required this.title,
-    required this.difficulty,
-    this.isCompleted = false, // Varsayılan olarak yapılmadı
-  });
+  Map<String, dynamic> toJson() =>
+      {'title': title, 'isCompleted': isCompleted, 'difficulty': difficulty};
+  factory Task.fromJson(Map<String, dynamic> json) => Task(
+      title: json['title'],
+      isCompleted: json['isCompleted'],
+      difficulty: json['difficulty'] ?? 1);
 }

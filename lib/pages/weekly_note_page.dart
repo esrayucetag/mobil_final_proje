@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Task {
@@ -29,6 +28,7 @@ class WeeklyNotePage extends StatefulWidget {
 
 class _WeeklyNotePageState extends State<WeeklyNotePage> {
   final TextEditingController _noteController = TextEditingController();
+  bool isProgramStarted = false;
   Map<String, List<Task>> weeklyTasks = {
     "1. Gün": [],
     "2. Gün": [],
@@ -36,7 +36,7 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
     "4. Gün": [],
     "5. Gün": [],
     "6. Gün": [],
-    "7. Gün": [],
+    "7. Gün": []
   };
 
   @override
@@ -45,142 +45,116 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
     _loadData();
   }
 
-  // --- SENİN ÖZEL PUAN SİSTEMİN (GELECEK GÜNLER CEZA VERMEZ) ---
+  // GARANTİLENMİŞ PUANLAMA MANTIĞI ✨
   double _calculateCurrentScore() {
-    double totalScore = 0;
+    if (!isProgramStarted) return 0.0;
+
+    double totalPoints = 0;
     bool recoveryMode = false;
+    bool hasAnyActivity = false; // Sistemde görev var mı kontrolü
 
-    List<String> days = weeklyTasks.keys.toList();
-    DateTime now = DateTime.now();
-    DateTime start;
-    try {
-      start = DateFormat('dd.MM.yyyy').parse(widget.weekTitle.split(' - ')[0]);
-    } catch (e) {
-      start = DateTime.now();
-    }
+    for (int i = 0; i < 7; i++) {
+      String dayKey = "${i + 1}. Gün";
+      List<Task> tasks = weeklyTasks[dayKey]!;
 
-    for (int i = 0; i < days.length; i++) {
-      DateTime dayDate =
-          DateTime(start.year, start.month, start.day).add(Duration(days: i));
-
-      // Eğer gün henüz gelmediyse puanlamaya katma (Skorun neden -40 olduğunu çözen kısım)
-      if (now.isBefore(dayDate) && !_isDayToday(dayDate)) {
-        continue;
-      }
-
-      List<Task> tasks = weeklyTasks[days[i]]!;
       if (tasks.isEmpty) continue;
+      hasAnyActivity = true;
 
-      int completedCount = tasks.where((t) => t.isCompleted).length;
+      int completedTasksCount = tasks.where((t) => t.isCompleted).length;
 
-      if (completedCount == 0) {
-        totalScore -= 20; // HİÇBİR ŞEY YAPMADIYSA CEZA
+      if (completedTasksCount == 0) {
+        // Kural: Hiç görev yapılmadıysa -20 puan ve yarın telafi modu
+        totalPoints -= 20.0;
         recoveryMode = true;
       } else {
-        double dayBase = (i == 0) ? 40.0 : 10.0;
-        if (recoveryMode) {
-          dayBase *= 2; // GERİ DÖNÜŞ ÖDÜLÜ
-          recoveryMode = false;
-        }
+        // Puan Ağırlığı Belirleme: Telafi (20), İlk Gün (40), Diğerleri (10)
+        double dayWeight = recoveryMode ? 20.0 : (i == 0 ? 40.0 : 10.0);
+        recoveryMode = false;
 
-        double dayTotalWeight =
+        // Zorluk katsayılarını topla
+        double totalDifficulty =
             tasks.fold(0, (sum, item) => sum + item.difficulty);
-        double dayEarnedWeight = tasks
+        double earnedDifficulty = tasks
             .where((t) => t.isCompleted)
             .fold(0, (sum, item) => sum + item.difficulty);
 
-        totalScore += (dayEarnedWeight / dayTotalWeight) * dayBase;
+        // Oranla ve puanı ekle (Sıfıra bölünme hatasını engelle)
+        if (totalDifficulty > 0) {
+          totalPoints += (earnedDifficulty / totalDifficulty) * dayWeight;
+        }
       }
     }
-    return totalScore;
-  }
 
-  bool _isDayToday(DateTime date) {
-    DateTime now = DateTime.now();
-    return date.year == now.year &&
-        date.month == now.month &&
-        date.day == now.day;
-  }
-
-  bool _isDayAccessible(int dayIndex) {
-    if (widget.isReadOnly) return false;
-    try {
-      DateTime now = DateTime.now();
-      DateTime start =
-          DateFormat('dd.MM.yyyy').parse(widget.weekTitle.split(' - ')[0]);
-      DateTime target = DateTime(start.year, start.month, start.day)
-          .add(Duration(days: dayIndex));
-      if (now.isBefore(target) && !_isDayToday(target)) return false;
-      if (now.isAfter(target.add(const Duration(days: 2)))) return false;
-      return true;
-    } catch (e) {
-      return true;
-    }
+    // Puan negatif çıkarsa 0 göster, hiç görev yoksa 0 göster
+    return hasAnyActivity ? (totalPoints < 0 ? 0.0 : totalPoints) : 0.0;
   }
 
   Future<void> _loadData() async {
     final prefs = await SharedPreferences.getInstance();
-    String? data = prefs.getString('tasks_${widget.weekTitle}');
-    String? note = prefs.getString('note_${widget.weekTitle}');
-    if (data != null) {
-      Map<String, dynamic> decoded = json.decode(data);
+    isProgramStarted = prefs.getBool('started_${widget.weekTitle}') ?? false;
+    String? taskData = prefs.getString('tasks_${widget.weekTitle}');
+    String? noteData = prefs.getString('note_${widget.weekTitle}');
+
+    if (taskData != null) {
+      Map<String, dynamic> decoded = json.decode(taskData);
       setState(() {
-        weeklyTasks = decoded.map((key, value) => MapEntry(
-            key, (value as List).map((t) => Task.fromJson(t)).toList()));
-        if (note != null) _noteController.text = note;
+        weeklyTasks = decoded.map((k, v) =>
+            MapEntry(k, (v as List).map((t) => Task.fromJson(t)).toList()));
+        if (noteData != null) _noteController.text = noteData;
       });
     }
   }
 
   Future<void> _saveData() async {
+    if (widget.isReadOnly) return;
     final prefs = await SharedPreferences.getInstance();
-    String encoded = json.encode(weeklyTasks.map(
-        (key, value) => MapEntry(key, value.map((t) => t.toJson()).toList())));
+    await prefs.setBool('started_${widget.weekTitle}', isProgramStarted);
+    String encoded = json.encode(weeklyTasks
+        .map((k, v) => MapEntry(k, v.map((t) => t.toJson()).toList())));
     await prefs.setString('tasks_${widget.weekTitle}', encoded);
     await prefs.setString('note_${widget.weekTitle}', _noteController.text);
+    setState(() {}); // Puanın anlık güncellenmesi için
   }
 
   @override
   Widget build(BuildContext context) {
     double currentScore = _calculateCurrentScore();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text("Skor: ${currentScore.toStringAsFixed(1)}",
-            style: const TextStyle(fontWeight: FontWeight.bold)),
+        title: Text("Puan: ${currentScore.toStringAsFixed(1)}"),
         centerTitle: true,
-        backgroundColor:
-            currentScore < 0 ? Colors.red.shade50 : Colors.green.shade50,
-        actions: [
-          if (!widget.isReadOnly)
-            IconButton(
-              icon: const Icon(Icons.save, color: Colors.blue),
-              onPressed: () async {
-                await _saveData();
-                if (!mounted) return;
-                ScaffoldMessenger.of(this.context).showSnackBar(
-                  const SnackBar(
-                      content: Text("Kaydedildi! ✅"),
-                      duration: Duration(seconds: 1)),
-                );
-              },
-            )
-        ],
       ),
       body: Column(
         children: [
-          // SADECE NOT ALANI (OTOMATİK DAĞITMAZ)
-          if (!widget.isReadOnly)
+          Padding(
+            padding: const EdgeInsets.all(12.0),
+            child: TextField(
+              controller: _noteController,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: "Haftalık plan notlarınızı buraya yazın...",
+                border: OutlineInputBorder(),
+                fillColor: Colors.white,
+                filled: true,
+              ),
+              onChanged: (v) => _saveData(),
+            ),
+          ),
+          if (!isProgramStarted && !widget.isReadOnly)
             Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: TextField(
-                controller: _noteController,
-                maxLines: 2,
-                onChanged: (val) => _saveData(),
-                decoration: const InputDecoration(
-                  hintText: "Haftalık stratejini buraya not al...",
-                  helperText: "Bu alan sadece senin referansın içindir.",
-                  border: OutlineInputBorder(),
+              padding: const EdgeInsets.symmetric(horizontal: 12.0),
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  minimumSize: const Size(double.infinity, 50),
+                  backgroundColor: Colors.green,
                 ),
+                onPressed: () {
+                  setState(() => isProgramStarted = true);
+                  _saveData();
+                },
+                child: const Text("HAFTAYI BAŞLAT",
+                    style: TextStyle(color: Colors.white)),
               ),
             ),
           Expanded(
@@ -188,41 +162,31 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
               itemCount: 7,
               itemBuilder: (context, index) {
                 String day = "${index + 1}. Gün";
-                bool accessible = _isDayAccessible(index);
                 return Card(
                   margin:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  color: accessible ? null : Colors.grey.shade100,
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   child: ExpansionTile(
-                    leading: Icon(
-                        accessible ? Icons.calendar_today : Icons.lock,
-                        color: accessible ? Colors.blue : Colors.grey),
                     title: Text(day,
-                        style: TextStyle(
-                            color: accessible ? Colors.black : Colors.grey)),
-                    trailing: accessible
+                        style: const TextStyle(fontWeight: FontWeight.bold)),
+                    trailing: (!isProgramStarted && !widget.isReadOnly)
                         ? IconButton(
-                            icon: const Icon(Icons.add),
+                            icon: const Icon(Icons.add_circle,
+                                color: Colors.blue),
                             onPressed: () => _addTask(day))
                         : null,
-                    children: weeklyTasks[day]!.map((task) {
-                      return ListTile(
-                        title: Text(task.title,
-                            style: TextStyle(
-                                decoration: task.isCompleted
-                                    ? TextDecoration.lineThrough
-                                    : null)),
-                        trailing: Checkbox(
-                          value: task.isCompleted,
-                          onChanged: accessible
-                              ? (val) {
-                                  setState(() => task.isCompleted = val!);
-                                  _saveData();
-                                }
-                              : null,
-                        ),
-                      );
-                    }).toList(),
+                    children: weeklyTasks[day]!
+                        .map((task) => CheckboxListTile(
+                              title: Text(task.title),
+                              subtitle: Text("Zorluk: ${task.difficulty}"),
+                              value: task.isCompleted,
+                              onChanged: (widget.isReadOnly)
+                                  ? null
+                                  : (val) {
+                                      setState(() => task.isCompleted = val!);
+                                      _saveData();
+                                    },
+                            ))
+                        .toList(),
                   ),
                 );
               },
@@ -235,28 +199,57 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
 
   void _addTask(String day) {
     TextEditingController tc = TextEditingController();
+    int tempDiff = 1;
     showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-              title: Text("$day Görev Ekle"),
-              content: TextField(
+      context: context,
+      builder: (c) => StatefulBuilder(
+        builder: (ctx, setS) => AlertDialog(
+          title: Text("$day - Yeni Görev"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
                   controller: tc,
-                  decoration: const InputDecoration(hintText: "Görev adı...")),
-              actions: [
-                TextButton(
-                    onPressed: () => Navigator.pop(context),
-                    child: const Text("İptal")),
-                ElevatedButton(
-                    onPressed: () {
-                      if (tc.text.isNotEmpty) {
-                        setState(() => weeklyTasks[day]!
-                            .add(Task(title: tc.text, difficulty: 2)));
-                        _saveData();
-                        Navigator.pop(context);
-                      }
-                    },
-                    child: const Text("Ekle")),
-              ],
-            ));
+                  decoration: const InputDecoration(hintText: "Görev adı")),
+              const SizedBox(height: 20),
+              const Text("Zorluk Seviyesi:"),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: List.generate(
+                    5,
+                    (i) => GestureDetector(
+                          onTap: () => setS(() => tempDiff = i + 1),
+                          child: CircleAvatar(
+                            backgroundColor: tempDiff == i + 1
+                                ? Colors.blue
+                                : Colors.grey[200],
+                            child: Text("${i + 1}",
+                                style: TextStyle(
+                                    color: tempDiff == i + 1
+                                        ? Colors.white
+                                        : Colors.black)),
+                          ),
+                        )),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(c), child: const Text("İptal")),
+            ElevatedButton(
+              onPressed: () {
+                if (tc.text.isNotEmpty) {
+                  setState(() => weeklyTasks[day]!
+                      .add(Task(title: tc.text, difficulty: tempDiff)));
+                  _saveData();
+                  Navigator.pop(c);
+                }
+              },
+              child: const Text("Ekle"),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

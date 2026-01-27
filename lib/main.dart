@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart'; // Bunu ekle
 import 'pages/login_page.dart';
 
-void main() {
+void main() async {
+  // Firebase'i başlatmak için bu iki satır ŞART ✨
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
+
   runApp(const MyApp());
 }
 
@@ -17,7 +22,7 @@ class MyApp extends StatelessWidget {
         primarySwatch: Colors.blue,
         useMaterial3: true,
       ),
-      home: const LoginPage(), // Burayı LoginPage yaptık
+      home: const LoginPage(),
     );
   }
 }

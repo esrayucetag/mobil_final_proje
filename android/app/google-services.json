@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "178336795272",
+    "project_id": "minchir-haftalik-program",
+    "storage_bucket": "minchir-haftalik-program.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:178336795272:android:26f9fbcbf32f3a6f51ad3d",
+        "android_client_info": {
+          "package_name": "com.example.ldead_task"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC4wrfewLXzuZytonTXYrkEwbfwU33q0BE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

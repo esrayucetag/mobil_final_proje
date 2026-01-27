@@ -2,7 +2,7 @@
 # mobil_final_proje
 çalışmalarımı disiplinle uygulayabilmek için geliştirdiğim puan sistemi ile entegre, kişisel haftalık görev programı.
 =======
-# ldead_task
+# minchir_task
 
 A new Flutter project.
 
