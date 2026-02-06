@@ -1,3 +1,5 @@
+## TANITIM VİDEOSU 
+
 # Minchir — Haftalık Planlayıcı (Flutter + Firebase)
 
 Minchir, kullanıcıların **seçtikleri bir tarihten başlayan 7 günlük** plan oluşturmasını sağlayan bir haftalık planlayıcı uygulamasıdır.  
