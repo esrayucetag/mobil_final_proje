@@ -96,8 +96,12 @@ class _HomePageState extends State<HomePage> {
                       leading: const Icon(Icons.logout),
                       title: const Text("Çıkış Yap"),
                       onTap: () async {
-                        Navigator.pop(context);
-                        await FirebaseAuth.instance.signOut();
+                        Navigator.pop(context); // drawer kapansın
+                        try {
+                          await FirebaseAuth.instance.signOut();
+                        } catch (_) {
+                          // İstersen burada bir dialog gösterebiliriz ama şimdilik sessiz kalsın
+                        }
                       },
                     ),
                   ],

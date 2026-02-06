@@ -275,8 +275,12 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
                   leading: const Icon(Icons.logout),
                   title: const Text("Çıkış Yap"),
                   onTap: () async {
-                    Navigator.pop(context);
-                    await FirebaseAuth.instance.signOut();
+                    Navigator.pop(context); 
+                    try {
+                      await FirebaseAuth.instance.signOut();
+                    } catch (_) {
+                    
+                    }
                   },
                 ),
               ],
