@@ -19,7 +19,6 @@ class DistributeMainPage extends StatelessWidget {
       ),
       body: Column(
         children: [
-          // Senin "bakabilsin" dediğin not alanı:
           Container(
             width: double.infinity,
             margin: const EdgeInsets.all(12),

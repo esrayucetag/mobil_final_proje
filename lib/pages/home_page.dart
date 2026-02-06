@@ -6,6 +6,7 @@ import 'about_page.dart';
 import 'start_date_page.dart';
 import 'statistics_page.dart';
 import 'weekly_note_page.dart';
+import 'dart:ui';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -48,35 +49,61 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     return Scaffold(
       drawer: Drawer(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
         child: SafeArea(
-          child: ListView(
-            padding: EdgeInsets.zero,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(16, 18, 16, 10),
-                child: Text("Minchir",
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.only(
+              topRight: Radius.circular(18),
+              bottomRight: Radius.circular(18),
+            ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.62),
+                  border: Border(
+                    right: BorderSide(
+                      color: Colors.white.withOpacity(0.25),
+                      width: 1,
+                    ),
+                  ),
+                ),
+                child: ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(16, 18, 16, 10),
+                      child: Text(
+                        "Minchir",
+                        style: TextStyle(
+                            fontSize: 18, fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                    Divider(height: 1, color: Colors.black.withOpacity(0.08)),
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text("Hakkında"),
+                      onTap: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AboutPage()),
+                        );
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.logout),
+                      title: const Text("Çıkış Yap"),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await FirebaseAuth.instance.signOut();
+                      },
+                    ),
+                  ],
+                ),
               ),
-              const Divider(height: 1),
-              ListTile(
-                leading: const Icon(Icons.info_outline),
-                title: const Text("Hakkında"),
-                onTap: () {
-                  Navigator.pop(context);
-                  Navigator.push(context,
-                      MaterialPageRoute(builder: (_) => const AboutPage()));
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.logout),
-                title: const Text("Çıkış Yap"),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await FirebaseAuth.instance.signOut();
-                },
-              ),
-            ],
+            ),
           ),
         ),
       ),

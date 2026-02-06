@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'pages/auth_gate.dart';
+import 'pages/app_splash_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,15 +18,14 @@ class MyApp extends StatelessWidget {
   static const _bg = Color(0xFFF8FAFC);
   static const _text = Color(0xFF0F172A);
   static const _border = Color(0xFFE2E8F0);
-  static const _accent = Color(0xFF4F46E5);
 
   @override
   Widget build(BuildContext context) {
     final scheme = ColorScheme.fromSeed(
-      seedColor: _accent,
+      seedColor: const Color.fromARGB(255, 14, 56, 74),
       brightness: Brightness.light,
     ).copyWith(
-      primary: _accent,
+      primary: const Color.fromARGB(255, 14, 56, 74),
       surface: Colors.white,
       onSurface: _text,
       outline: _border,
@@ -37,11 +37,12 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: scheme,
-        scaffoldBackgroundColor: _bg,
+        scaffoldBackgroundColor: Colors.transparent,
         appBarTheme: const AppBarTheme(
-          backgroundColor: _bg,
+          backgroundColor: Colors.transparent,
           elevation: 0,
           centerTitle: true,
+          surfaceTintColor: Colors.transparent,
         ),
         cardTheme: CardTheme(
           color: Colors.white,
@@ -66,12 +67,12 @@ class MyApp extends StatelessWidget {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(14),
-            borderSide: const BorderSide(color: _accent, width: 1.4),
+            borderSide: const BorderSide(color: Color.fromARGB(255, 14, 56, 74), width: 1.4),
           ),
         ),
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
-            backgroundColor: _accent,
+            backgroundColor: const Color.fromARGB(255, 14, 56, 74),
             foregroundColor: Colors.white,
             shape:
                 RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -89,7 +90,27 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: const AuthGate(),
+      builder: (context, child) {
+        return Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'assets/splash.png',
+                fit: BoxFit.cover,
+              ),
+            ),
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.82),
+                ),
+              ),
+            ),
+            if (child != null) child,
+          ],
+        );
+      },
+      home: const AppSplashPage(),
     );
   }
 }

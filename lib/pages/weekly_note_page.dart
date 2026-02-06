@@ -218,7 +218,7 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
     }
 
     if (!mounted) return;
-    Navigator.push(
+    Navigator.pushReplacement(
       context,
       MaterialPageRoute(
         builder: (_) => WeekResultPage(
@@ -243,8 +243,8 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
   @override
   Widget build(BuildContext context) {
     final score = _calculateCurrentScore();
-    final label = _labelFor(score);
-    final statusColor = _statusColor(score);
+    _labelFor(score);
+    _statusColor(score);
 
     return PopScope(
       canPop: true,
@@ -285,27 +285,6 @@ class _WeeklyNotePageState extends State<WeeklyNotePage> {
         ),
         appBar: AppBar(
           title: Text(widget.weekTitle),
-          actions: [
-            Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Center(
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: statusColor.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(999),
-                    border: Border.all(color: statusColor.withOpacity(0.35)),
-                  ),
-                  child: Text(
-                    "${score.toStringAsFixed(1)} • $label",
-                    style: TextStyle(
-                        fontWeight: FontWeight.w700, color: statusColor),
-                  ),
-                ),
-              ),
-            )
-          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(16),

@@ -20,19 +20,28 @@ dev_dependencies:
     sdk: flutter
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.0
+  flutter_lints: ^4.0.0
 
+
+# ✅ Launcher Icon Ayarı
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
-  image_path: "assets/app_icon.png" # Yuvarlak ikon dosyanızın yolu
+  image_path: "assets/app_icon.png"
   min_sdk_android: 21
+  adaptive_icon_background: "#0F172A"
+  adaptive_icon_foreground: "assets/app_icon.png"
 
 flutter_native_splash:
-  color: "#ffffff"
-  image: "assets/splash.png" # Dikey açılış görselinizin yolu
-  android_12:
-    image: "assets/splash.png"
+  android: true
+  ios: true
   fullscreen: true
+  color: "#FFFFFF"
+
+  android_12:
+    color: "#FFFFFF"
+
+
 
 flutter:
   uses-material-design: true

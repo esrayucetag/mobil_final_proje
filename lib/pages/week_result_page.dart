@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'home_page.dart'; // ⭐ EKLENDİ
 
 class WeekResultPage extends StatelessWidget {
   final String weekTitle;
@@ -43,7 +44,13 @@ class WeekResultPage extends StatelessWidget {
               width: double.infinity,
               height: 52,
               child: ElevatedButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () {
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const HomePage()),
+                    (route) => false,
+                  );
+                },
                 child: const Text("Kapat"),
               ),
             ),
