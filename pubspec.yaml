@@ -1,7 +1,6 @@
 name: minchir_task
 description: "A new Flutter project."
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
@@ -10,7 +9,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
   firebase_core: 3.15.2
   firebase_auth: ^5.2.0
   shared_preferences: ^2.2.2
@@ -20,7 +18,24 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
+  flutter_native_splash: ^2.4.0
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/app_icon.png" # Yuvarlak ikon dosyanızın yolu
+  min_sdk_android: 21
+
+flutter_native_splash:
+  color: "#ffffff"
+  image: "assets/splash.png" # Dikey açılış görselinizin yolu
+  android_12:
+    image: "assets/splash.png"
+  fullscreen: true
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/app_icon.png
+    - assets/splash.png

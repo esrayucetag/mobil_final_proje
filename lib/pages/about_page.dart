@@ -6,13 +6,15 @@ class AboutPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Hakkında")),
+      appBar: AppBar(title: Text("Hakkında")),
       body: const Padding(
-        padding: EdgeInsets.all(18),
+        padding: EdgeInsets.all(16),
         child: Text(
-          "Minchir — haftalık görevlerini planlayıp ritmini koruman için tasarlandı.\n\n"
-          "Amaç: küçük adımları görünür kılmak, istikrarı güçlendirmek.",
-          style: TextStyle(height: 1.4),
+          "Minchir • Haftalık Planlayıcı\n\n"
+          "Amaç: Haftalık hedeflerini günlere böl, istikrarını takip et, "
+          "hafta sonunda net bir sonuç al.\n\n"
+          "Puanlama sistemi: başlangıç + devam + geri dönüş mantığıyla "
+          "istikrarı ödüllendirir.",
         ),
       ),
     );

@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-
 import 'home_page.dart';
 import 'login_page.dart';
 
@@ -12,9 +11,13 @@ class AuthGate extends StatelessWidget {
     return StreamBuilder<User?>(
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, snap) {
-        final user = snap.data;
-        if (user == null) return const LoginPage();
-        return HomePage(uid: user.uid);
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (snap.data == null) return const LoginPage();
+        return const HomePage();
       },
     );
   }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
 import 'register_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -15,7 +14,7 @@ class _LoginPageState extends State<LoginPage> {
   final _pass = TextEditingController();
   bool _loading = false;
 
-  Future<void> _showInfo(String title, String msg) async {
+  Future<void> _showMsg(String title, String msg) async {
     if (!mounted) return;
     await showDialog(
       context: context,
@@ -36,16 +35,17 @@ class _LoginPageState extends State<LoginPage> {
     final pass = _pass.text.trim();
 
     if (email.isEmpty || pass.isEmpty) {
-      await _showInfo("Eksik Bilgi", "Lütfen e-posta ve şifreyi gir.");
-      return;
+      return _showMsg("Eksik Bilgi", "Lütfen e-posta ve şifre gir.");
     }
 
     setState(() => _loading = true);
     try {
-      await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: pass);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: pass,
+      );
     } on FirebaseAuthException catch (e) {
-      await _showInfo("Giriş Hatası", e.message ?? "Bir hata oluştu.");
+      await _showMsg("Giriş Hatası", e.message ?? "Bilinmeyen hata");
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -54,16 +54,14 @@ class _LoginPageState extends State<LoginPage> {
   Future<void> _resetPassword() async {
     final email = _email.text.trim();
     if (email.isEmpty) {
-      await _showInfo(
-          "E-posta gerekli", "Şifre sıfırlama için e-posta girmen lazım.");
-      return;
+      return _showMsg("E-posta gerekli", "Şifre sıfırlamak için e-posta yaz.");
     }
     try {
       await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      await _showInfo("Gönderildi",
-          "Şifre sıfırlama maili gönderildi. Spam klasörüne de bak 💜");
+      await _showMsg(
+          "Gönderildi", "Şifre sıfırlama maili gönderildi. (Spam’a da bak)");
     } on FirebaseAuthException catch (e) {
-      await _showInfo("Hata", e.message ?? "Bir hata oluştu.");
+      await _showMsg("Hata", e.message ?? "Bilinmeyen hata");
     }
   }
 
@@ -77,62 +75,56 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text("Minchir",
-                  style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
-              const SizedBox(height: 6),
-              Text("Haftanı planla, ritmini koru.",
-                  style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .onSurface
-                          .withOpacity(.7))),
-              const SizedBox(height: 28),
-              TextField(
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(labelText: "E-posta"),
+      body: Padding(
+        padding: const EdgeInsets.all(28),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text("Minchir",
+                style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800)),
+            const SizedBox(height: 6),
+            const Text("Haftanı planla, ritmini koru.",
+                style: TextStyle(fontSize: 13)),
+            const SizedBox(height: 28),
+            TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              decoration: const InputDecoration(labelText: "E-posta"),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: _pass,
+              obscureText: true,
+              decoration: const InputDecoration(labelText: "Şifre"),
+            ),
+            const SizedBox(height: 22),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _login,
+                child: _loading
+                    ? const SizedBox(
+                        height: 18,
+                        width: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2))
+                    : const Text("Giriş Yap"),
               ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: _pass,
-                obscureText: true,
-                decoration: const InputDecoration(labelText: "Şifre"),
+            ),
+            const SizedBox(height: 10),
+            TextButton(
+              onPressed: _resetPassword,
+              child: const Text("Şifremi Unuttum"),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const RegisterPage()),
               ),
-              const SizedBox(height: 18),
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _loading ? null : _login,
-                  child: _loading
-                      ? const SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text("Giriş Yap"),
-                ),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: _loading ? null : _resetPassword,
-                child: const Text("Şifremi unuttum"),
-              ),
-              const SizedBox(height: 10),
-              TextButton(
-                onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => const RegisterPage()),
-                ),
-                child: const Text("Hesabın yok mu? Kaydol"),
-              ),
-            ],
-          ),
+              child: const Text("Hesabın yok mu? Kaydol"),
+            ),
+          ],
         ),
       ),
     );

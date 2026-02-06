@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/storage_keys.dart';
 import 'weekly_note_page.dart';
 
 class CurrentProgramPage extends StatefulWidget {
-  final String uid;
-  const CurrentProgramPage({super.key, required this.uid});
+  const CurrentProgramPage({super.key});
 
   @override
   State<CurrentProgramPage> createState() => _CurrentProgramPageState();
@@ -17,51 +16,32 @@ class _CurrentProgramPageState extends State<CurrentProgramPage> {
   String? _activeWeek;
   bool _loading = true;
 
-  DateTime? _parseEndDate(String weekTitle) {
-    try {
-      final endStr = weekTitle.split(' - ').last.trim();
-      return DateFormat('dd.MM.yyyy').parse(endStr);
-    } catch (_) {
-      return null;
-    }
-  }
-
-  Future<void> _loadActive() async {
-    final prefs = await SharedPreferences.getInstance();
-    final all = prefs.getStringList(StorageKeys.savedWeeks(widget.uid)) ?? [];
-    final interrupted =
-        prefs.getStringList(StorageKeys.interruptedWeeks(widget.uid)) ?? [];
-
-    final now = DateTime.now();
-    String? latestActive;
-
-    for (int i = all.length - 1; i >= 0; i--) {
-      final title = all[i];
-      if (interrupted.contains(title)) continue;
-
-      final end = _parseEndDate(title);
-      if (end == null) continue;
-
-      final expiry =
-          DateTime(end.year, end.month, end.day).add(const Duration(days: 1));
-
-      if (now.isBefore(expiry)) {
-        latestActive = title;
-        break;
-      }
-    }
-
-    if (!mounted) return;
-    setState(() {
-      _activeWeek = latestActive;
-      _loading = false;
-    });
-  }
+  String get _uid => FirebaseAuth.instance.currentUser!.uid;
 
   @override
   void initState() {
     super.initState();
     _loadActive();
+  }
+
+  Future<void> _loadActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    final active = prefs.getString(StorageKeys.activeWeek(_uid));
+
+    if (!mounted) return;
+    setState(() {
+      _activeWeek = active;
+      _loading = false;
+    });
+  }
+
+  void _open() {
+    final w = _activeWeek;
+    if (w == null) return;
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => WeeklyNotePage(weekTitle: w)),
+    ).then((_) => _loadActive());
   }
 
   @override
@@ -72,25 +52,51 @@ class _CurrentProgramPageState extends State<CurrentProgramPage> {
       );
     }
 
-    if (_activeWeek == null) {
-      return Scaffold(
-        appBar: AppBar(title: const Text("Güncel Program")),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(20),
-            child: Text(
-              "Şu an aktif veya süresi dolmamış bir programın yok.",
-              textAlign: TextAlign.center,
+    return Scaffold(
+      appBar: AppBar(title: const Text("Güncel Program")),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 520),
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "Aktif Programım",
+                      style:
+                          TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _activeWeek ?? "Şu an aktif bir program yok.",
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(.75),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: _activeWeek == null ? null : _open,
+                        icon: const Icon(Icons.open_in_new),
+                        label: const Text("Programı Aç"),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
         ),
-      );
-    }
-
-    // ✅ aktif haftaya direkt götürüyoruz (not + görevler)
-    return WeeklyNotePage(
-      uid: widget.uid,
-      weekTitle: _activeWeek!,
+      ),
     );
   }
 }
