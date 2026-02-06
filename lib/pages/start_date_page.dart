@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+
 import 'weekly_note_page.dart';
 
 class StartDatePage extends StatefulWidget {
-  const StartDatePage({super.key});
+  final String uid;
+  const StartDatePage({super.key, required this.uid});
 
   @override
   State<StartDatePage> createState() => _StartDatePageState();
@@ -13,9 +16,11 @@ class _StartDatePageState extends State<StartDatePage> {
 
   @override
   Widget build(BuildContext context) {
-    // Hata riskini azaltmak için başlığı en basit haliyle oluşturalım
-    String weekTitle =
-        "${selectedDate.day}.${selectedDate.month} - ${selectedDate.add(const Duration(days: 6)).day}.${selectedDate.add(const Duration(days: 6)).month}";
+    final start =
+        DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
+    final end = start.add(const Duration(days: 6));
+    final weekTitle =
+        "${DateFormat('dd.MM.yyyy').format(start)} - ${DateFormat('dd.MM.yyyy').format(end)}";
 
     return Scaffold(
       appBar: AppBar(title: const Text("Tarih Seçimi")),
@@ -25,26 +30,31 @@ class _StartDatePageState extends State<StartDatePage> {
             child: CalendarDatePicker(
               initialDate: selectedDate,
               firstDate: DateTime(2020),
-              lastDate: DateTime(2030),
-              onDateChanged: (date) {
-                setState(() {
-                  selectedDate = date;
-                });
-              },
+              lastDate: DateTime(2035),
+              onDateChanged: (date) => setState(() => selectedDate = date),
             ),
           ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => WeeklyNotePage(weekTitle: weekTitle),
-                ),
-              );
-            },
-            child: const Text("Haftayı Planla"),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => WeeklyNotePage(
+                        uid: widget.uid,
+                        weekTitle: weekTitle,
+                      ),
+                    ),
+                  );
+                },
+                child: const Text("Haftayı Planla"),
+              ),
+            ),
           ),
-          const SizedBox(height: 50),
         ],
       ),
     );

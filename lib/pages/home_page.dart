@@ -1,19 +1,23 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'weekly_note_page.dart';
+
+import '../services/storage_keys.dart';
+import 'about_page.dart';
 import 'statistics_page.dart';
+import 'weekly_note_page.dart';
 
 class HomePage extends StatefulWidget {
-  const HomePage({super.key});
+  final String uid;
+  const HomePage({super.key, required this.uid});
 
   @override
   State<HomePage> createState() => _HomePageState();
 }
 
 class _HomePageState extends State<HomePage> {
-  DateTime? _startDate; //
-  String? _activeWeekTitle; //
+  String? _activeWeekTitle;
 
   @override
   void initState() {
@@ -23,133 +27,171 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _checkActiveProgram() async {
     final prefs = await SharedPreferences.getInstance();
-    List<String> all = prefs.getStringList('saved_weeks') ?? [];
-    List<String> inter = prefs.getStringList('interrupted_weeks') ?? [];
-
-    // today değişkenini burada tanımlayıp mantığa dahil ederek sarı çizgiyi yok ettik
-    DateTime today =
-        DateTime(DateTime.now().year, DateTime.now().month, DateTime.now().day);
-    debugPrint(
-        "Bugünün tarihi: $today"); // Değişkeni aktif kullanarak uyarıyı sildik.
+    final all = prefs.getStringList(StorageKeys.savedWeeks(widget.uid)) ?? [];
+    final interrupted =
+        prefs.getStringList(StorageKeys.interruptedWeeks(widget.uid)) ?? [];
 
     String? found;
-    for (String title in all) {
-      if (!inter.contains(title)) {
-        found = title;
+    for (final w in all.reversed) {
+      if (!interrupted.contains(w)) {
+        found = w;
         break;
       }
     }
 
-    if (mounted) {
-      setState(() {
-        _activeWeekTitle = found;
-      });
-    }
+    if (!mounted) return;
+    setState(() => _activeWeekTitle = found);
   }
 
-  Future<void> _checkAndSaveProgram(String newTitle) async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> inter = prefs.getStringList('interrupted_weeks') ?? [];
+  Future<void> _pickAndStartWeek() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(2024),
+      lastDate: DateTime(2030),
+    );
+    if (picked == null) return;
 
+    final start = DateTime(picked.year, picked.month, picked.day);
+    final end = start.add(const Duration(days: 6));
+    final title =
+        "${DateFormat('dd.MM.yyyy').format(start)} - ${DateFormat('dd.MM.yyyy').format(end)}";
+
+    // aktif program varsa uyar
     if (_activeWeekTitle != null) {
-      if (!mounted) return; // Mavi çizgiyi engelleyen kontrol
-
-      bool confirm = await showDialog(
+      final ok = await showDialog<bool>(
             context: context,
-            builder: (ctx) => AlertDialog(
-              title: const Text(
-                  "Yeni Program?"), // const eklenerek sarı çizgi silindi
+            builder: (_) => AlertDialog(
+              title: const Text("Yeni Program?"),
               content: Text("'$_activeWeekTitle' yarım bırakılacak. Devam mı?"),
               actions: [
                 TextButton(
-                    onPressed: () => Navigator.pop(ctx, false),
-                    child: const Text("Hayır")), // const eklendi
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text("Hayır")),
                 ElevatedButton(
-                    onPressed: () => Navigator.pop(ctx, true),
-                    child: const Text("Evet")), // const eklendi
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text("Evet")),
               ],
             ),
           ) ??
           false;
 
-      if (confirm) {
-        if (!inter.contains(_activeWeekTitle!)) {
-          inter.add(_activeWeekTitle!);
-        }
-        await prefs.setStringList('interrupted_weeks', inter);
-        _navigateToNew(newTitle, prefs);
-      }
-    } else {
-      _navigateToNew(newTitle, prefs);
-    }
-  }
+      if (!ok) return;
 
-  void _navigateToNew(String title, SharedPreferences prefs) async {
-    List<String> all = prefs.getStringList('saved_weeks') ?? [];
+      final prefs = await SharedPreferences.getInstance();
+      final inter =
+          prefs.getStringList(StorageKeys.interruptedWeeks(widget.uid)) ?? [];
+      if (!inter.contains(_activeWeekTitle!)) inter.add(_activeWeekTitle!);
+      await prefs.setStringList(
+          StorageKeys.interruptedWeeks(widget.uid), inter);
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final all = prefs.getStringList(StorageKeys.savedWeeks(widget.uid)) ?? [];
     if (!all.contains(title)) {
       all.add(title);
-      await prefs.setStringList('saved_weeks', all);
+      await prefs.setStringList(StorageKeys.savedWeeks(widget.uid), all);
     }
 
     if (!mounted) return;
-
-    Navigator.push(
+    await Navigator.push(
       context,
-      MaterialPageRoute(builder: (c) => WeeklyNotePage(weekTitle: title)),
-    ).then((_) => _checkActiveProgram());
+      MaterialPageRoute(
+          builder: (_) => WeeklyNotePage(uid: widget.uid, weekTitle: title)),
+    );
+    _checkActiveProgram();
+  }
+
+  Future<void> _openActiveWeek() async {
+    final t = _activeWeekTitle;
+    if (t == null) return;
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+          builder: (_) => WeeklyNotePage(uid: widget.uid, weekTitle: t)),
+    );
+    _checkActiveProgram();
+  }
+
+  Future<void> _logout() async {
+    await FirebaseAuth.instance.signOut();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Haftalık Planlayıcı"),
+        title: const Text("Minchir"),
         actions: [
           IconButton(
-            icon: const Icon(Icons.bar_chart),
+            icon: const Icon(Icons.bar_chart_rounded),
             onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                    builder: (context) => const StatisticsPage())),
-          ),
+              context,
+              MaterialPageRoute(
+                  builder: (_) => StatisticsPage(uid: widget.uid)),
+            ),
+          )
         ],
       ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // _startDate sarı çizgisini burada kullanarak temizledik
-            if (_startDate != null)
-              Text(
-                  "Seçilen Tarih: ${DateFormat('dd.MM.yyyy').format(_startDate!)}"),
-
-            const SizedBox(height: 20),
-
-            ElevatedButton(
-              onPressed: () async {
-                final DateTime? picked = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2024),
-                  lastDate: DateTime(2030),
-                );
-                if (picked != null) {
-                  setState(() {
-                    _startDate = picked;
-                  });
-                  String newTitle =
-                      "${DateFormat('dd.MM.yyyy').format(picked)} - ${DateFormat('dd.MM.yyyy').format(picked.add(const Duration(days: 6)))}";
-                  _checkAndSaveProgram(newTitle);
-                }
-              },
-              child: const Text("Program Başlat"),
-            ),
-            if (_activeWeekTitle != null)
-              Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: Text("Aktif Program: $_activeWeekTitle"),
+      drawer: Drawer(
+        child: SafeArea(
+          child: Column(
+            children: [
+              const ListTile(
+                title:
+                    Text("Menü", style: TextStyle(fontWeight: FontWeight.w800)),
               ),
-          ],
+              ListTile(
+                leading: const Icon(Icons.info_outline),
+                title: const Text("Hakkında"),
+                onTap: () => Navigator.push(context,
+                    MaterialPageRoute(builder: (_) => const AboutPage())),
+              ),
+              ListTile(
+                leading: const Icon(Icons.logout),
+                title: const Text("Çıkış Yap"),
+                onTap: _logout,
+              ),
+            ],
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text("Yeni hafta başlat",
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800)),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                height: 54,
+                child: ElevatedButton.icon(
+                  onPressed: _pickAndStartWeek,
+                  icon: const Icon(Icons.play_circle_outline),
+                  label: const Text("Başlangıç tarihi seç"),
+                ),
+              ),
+              const SizedBox(height: 18),
+              if (_activeWeekTitle != null) ...[
+                const Text("Aktif Programım",
+                    style:
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 10),
+                Card(
+                  child: ListTile(
+                    title: Text(_activeWeekTitle!,
+                        style: const TextStyle(fontWeight: FontWeight.w700)),
+                    subtitle: const Text("Devam etmek için dokun"),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: _openActiveWeek,
+                  ),
+                ),
+              ],
+            ],
+          ),
         ),
       ),
     );

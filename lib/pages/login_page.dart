@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+
 import 'register_page.dart';
-import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,104 +11,128 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  // Yazılanları okumak için controller ekliyoruz
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+  final _email = TextEditingController();
+  final _pass = TextEditingController();
+  bool _loading = false;
+
+  Future<void> _showInfo(String title, String msg) async {
+    if (!mounted) return;
+    await showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: Text(msg),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Tamam")),
+        ],
+      ),
+    );
+  }
 
   Future<void> _login() async {
-    try {
-      // Firebase ile giriş yapma
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+    final email = _email.text.trim();
+    final pass = _pass.text.trim();
 
-      if (!mounted) return;
-      // Giriş başarılıysa ana sayfaya git
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
-      );
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      // Hata durumunda senin o siyah kutucukta gördüğün mesajı gösterir
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Hata: ${e.message}")),
-      );
+    if (email.isEmpty || pass.isEmpty) {
+      await _showInfo("Eksik Bilgi", "Lütfen e-posta ve şifreyi gir.");
+      return;
     }
+
+    setState(() => _loading = true);
+    try {
+      await FirebaseAuth.instance
+          .signInWithEmailAndPassword(email: email, password: pass);
+    } on FirebaseAuthException catch (e) {
+      await _showInfo("Giriş Hatası", e.message ?? "Bir hata oluştu.");
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _resetPassword() async {
+    final email = _email.text.trim();
+    if (email.isEmpty) {
+      await _showInfo(
+          "E-posta gerekli", "Şifre sıfırlama için e-posta girmen lazım.");
+      return;
+    }
+    try {
+      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
+      await _showInfo("Gönderildi",
+          "Şifre sıfırlama maili gönderildi. Spam klasörüne de bak 💜");
+    } on FirebaseAuthException catch (e) {
+      await _showInfo("Hata", e.message ?? "Bir hata oluştu.");
+    }
+  }
+
+  @override
+  void dispose() {
+    _email.dispose();
+    _pass.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, //
-      body: Padding(
-        padding: const EdgeInsets.all(40.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Text(
-              "Giriş Yap",
-              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-            ), //
-            const SizedBox(height: 60),
-
-            // E-posta kutusu
-            TextField(
-              controller: _emailController,
-              decoration: InputDecoration(
-                labelText: "E-posta",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(28),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Minchir",
+                  style: TextStyle(fontSize: 34, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 6),
+              Text("Haftanı planla, ritmini koru.",
+                  style: TextStyle(
+                      color: Theme.of(context)
+                          .colorScheme
+                          .onSurface
+                          .withOpacity(.7))),
+              const SizedBox(height: 28),
+              TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(labelText: "E-posta"),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _pass,
+                obscureText: true,
+                decoration: const InputDecoration(labelText: "Şifre"),
+              ),
+              const SizedBox(height: 18),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _login,
+                  child: _loading
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text("Giriş Yap"),
                 ),
               ),
-            ),
-            const SizedBox(height: 20),
-
-            // Şifre kutusu
-            TextField(
-              controller: _passwordController,
-              obscureText: true,
-              decoration: InputDecoration(
-                labelText: "Şifre",
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: _loading ? null : _resetPassword,
+                child: const Text("Şifremi unuttum"),
+              ),
+              const SizedBox(height: 10),
+              TextButton(
+                onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const RegisterPage()),
                 ),
+                child: const Text("Hesabın yok mu? Kaydol"),
               ),
-            ),
-            const SizedBox(height: 40),
-
-            // Lila Giriş Yap Butonu
-            SizedBox(
-              width: 150,
-              height: 50,
-              child: ElevatedButton(
-                onPressed: _login,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFFF3E5F5), // Lila tonu
-                  foregroundColor: const Color(0xFF7B1FA2), // Mor yazı
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  elevation: 0,
-                ),
-                child: const Text("Giriş Yap"),
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Kaydolma Linki
-            TextButton(
-              onPressed: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (context) => const RegisterPage()),
-              ),
-              child: const Text(
-                "Hesabın yok mu? Kaydol",
-                style: TextStyle(color: Color(0xFF7B1FA2)),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

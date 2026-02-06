@@ -1,82 +1,96 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
+import '../services/storage_keys.dart';
 import 'weekly_note_page.dart';
 
 class CurrentProgramPage extends StatefulWidget {
-  const CurrentProgramPage({super.key});
+  final String uid;
+  const CurrentProgramPage({super.key, required this.uid});
 
   @override
   State<CurrentProgramPage> createState() => _CurrentProgramPageState();
 }
 
 class _CurrentProgramPageState extends State<CurrentProgramPage> {
-  String? lastSavedWeek;
-  bool isLoading = true;
+  String? _activeWeek;
+  bool _loading = true;
+
+  DateTime? _parseEndDate(String weekTitle) {
+    try {
+      final endStr = weekTitle.split(' - ').last.trim();
+      return DateFormat('dd.MM.yyyy').parse(endStr);
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadActive() async {
+    final prefs = await SharedPreferences.getInstance();
+    final all = prefs.getStringList(StorageKeys.savedWeeks(widget.uid)) ?? [];
+    final interrupted =
+        prefs.getStringList(StorageKeys.interruptedWeeks(widget.uid)) ?? [];
+
+    final now = DateTime.now();
+    String? latestActive;
+
+    for (int i = all.length - 1; i >= 0; i--) {
+      final title = all[i];
+      if (interrupted.contains(title)) continue;
+
+      final end = _parseEndDate(title);
+      if (end == null) continue;
+
+      final expiry =
+          DateTime(end.year, end.month, end.day).add(const Duration(days: 1));
+
+      if (now.isBefore(expiry)) {
+        latestActive = title;
+        break;
+      }
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _activeWeek = latestActive;
+      _loading = false;
+    });
+  }
 
   @override
   void initState() {
     super.initState();
-    _checkLastSavedWeek();
-  }
-
-  Future<void> _checkLastSavedWeek() async {
-    final prefs = await SharedPreferences.getInstance();
-    List<String> allWeeks = prefs.getStringList('saved_weeks') ?? [];
-    List<String> interrupted = prefs.getStringList('interrupted_weeks') ?? [];
-    DateTime now = DateTime.now();
-
-    if (allWeeks.isNotEmpty) {
-      String? latestActive;
-      for (var i = allWeeks.length - 1; i >= 0; i--) {
-        try {
-          String endDateStr = allWeeks[i].split(' - ')[1];
-          DateTime programEnd = DateFormat('dd.MM.yyyy').parse(endDateStr);
-          DateTime expiryMoment =
-              DateTime(programEnd.year, programEnd.month, programEnd.day)
-                  .add(const Duration(days: 1));
-
-          // EKSİK SÜSLÜ PARANTEZLER BURADA EKLENDİ ✨
-          if (now.isBefore(expiryMoment) &&
-              !interrupted.contains(allWeeks[i])) {
-            latestActive = allWeeks[i];
-            break;
-          }
-        } catch (e) {
-          continue;
-        }
-      }
-      setState(() {
-        lastSavedWeek = latestActive;
-        isLoading = false;
-      });
-    } else {
-      setState(() => isLoading = false);
-    }
+    _loadActive();
   }
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
     }
 
-    if (lastSavedWeek == null) {
+    if (_activeWeek == null) {
       return Scaffold(
         appBar: AppBar(title: const Text("Güncel Program")),
         body: const Center(
           child: Padding(
-            padding: EdgeInsets.all(24.0),
+            padding: EdgeInsets.all(20),
             child: Text(
-              "Şu an aktif veya süresi dolmamış bir programın yok aşkım. ✨",
+              "Şu an aktif veya süresi dolmamış bir programın yok.",
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 16),
             ),
           ),
         ),
       );
     }
 
-    return WeeklyNotePage(weekTitle: lastSavedWeek!);
+    // ✅ aktif haftaya direkt götürüyoruz (not + görevler)
+    return WeeklyNotePage(
+      uid: widget.uid,
+      weekTitle: _activeWeek!,
+    );
   }
 }
