@@ -1,4 +1,4 @@
-## TANITIM VİDEOSU 
+## TANITIM VİDEOSU https://youtu.be/2Akm6n2nsrA
 
 # Minchir — Haftalık Planlayıcı (Flutter + Firebase)
 
